@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function HomeScreen() {
+export default function FriendsScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Jekalo! 🎯</Text>
-      <Text style={styles.subtitle}>Track your goals, stay accountable, and achieve more.</Text>
+      <Text style={styles.title}>Accountability Partners 👥</Text>
+      <Text style={styles.subtitle}>Add friends to keep each other accountable.</Text>
     </View>
   );
 }
