@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+// app/(modals)/goalDetails.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, Alert, TouchableOpacity } from "react-native";
 import {
@@ -9,10 +9,13 @@ import {
   IconButton,
   TextInput,
 } from "react-native-paper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useGoalContext } from "../../context/GoalContext";
+import { GoalsService } from "../../services/firebase/GoalsService";
+import { auth } from "../../config/firebaseConfig";
 import styles from "./goalDetails.styles";
 
+// If your type definitions are in types/models.ts, ensure it has these:
 interface MilestoneUpdate {
   id: string;
   text: string;
@@ -29,58 +32,44 @@ interface Milestone {
 export default function GoalDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  // Convert id to a string if it's an array.
   const goalId = Array.isArray(id) ? id[0] : id;
+
   const { dispatch } = useGoalContext();
 
   const [goal, setGoal] = useState<any>(null);
-
-  // Inline title editing
+  const [loading, setLoading] = useState(true);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState("");
 
-  // Track which milestone is being edited
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
-  // Temporarily store milestone edits
   const [milestoneEdits, setMilestoneEdits] = useState<{ [key: string]: string }>({});
-
-  // Track which milestone’s activity is expanded
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
 
   useEffect(() => {
     loadGoal();
-  }, []);
+  }, [goalId]);
 
-  // Load goal from AsyncStorage using goalId
   const loadGoal = async () => {
     try {
-      const storedGoals = await AsyncStorage.getItem("goals");
-      const goals = storedGoals ? JSON.parse(storedGoals) : [];
-      const foundGoal = goals.find((g: any) => g.id === goalId);
-      setGoal(foundGoal);
-      if (foundGoal) {
-        setTempTitle(foundGoal.title);
+      setLoading(true);
+      if (!auth.currentUser || !goalId) {
+        setLoading(false);
+        return;
+      }
+      const fetchedGoal = await GoalsService.getGoal(auth.currentUser.uid, goalId);
+      if (fetchedGoal) {
+        setGoal(fetchedGoal);
+        setTempTitle(fetchedGoal.title);
       }
     } catch (error) {
       console.error("Error loading goal:", error);
+      Alert.alert("Error", "Failed to load goal details.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Update the entire goal in AsyncStorage
-  const updateGoalInStorage = async (updatedGoal: any) => {
-    try {
-      const storedGoals = await AsyncStorage.getItem("goals");
-      const goals = storedGoals ? JSON.parse(storedGoals) : [];
-      const updatedGoals = goals.map((g: any) =>
-        g.id === goalId ? updatedGoal : g
-      );
-      await AsyncStorage.setItem("goals", JSON.stringify(updatedGoals));
-    } catch (error) {
-      console.error("Error updating goal:", error);
-    }
-  };
-
-  // --- Inline Title Editing ---
+  // Inline Title Editing
   const toggleTitleEdit = () => {
     if (!isEditingTitle) {
       setTempTitle(goal.title);
@@ -92,59 +81,82 @@ export default function GoalDetailsScreen() {
   };
 
   const updateGoalTitle = async (newTitle: string) => {
-    const updatedGoal = { ...goal, title: newTitle.trim() };
-    setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    try {
+      if (!auth.currentUser || !goalId) return;
+      const updatedGoal = { ...goal, title: newTitle.trim() };
+      setGoal(updatedGoal); // local UI update
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, { title: newTitle.trim() });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error updating goal title:", error);
+    }
   };
 
-  // --- Milestones ---
+  // Milestones
   const toggleMilestone = async (milestoneId: string) => {
-    const updatedMilestones = goal.milestones.map((m: Milestone) =>
+    const updatedMilestones = goal.milestones?.map((m: Milestone) =>
       m.id === milestoneId ? { ...m, completed: !m.completed } : m
-    );
+    ) || [];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error toggling milestone:", error);
+    }
   };
 
   const startEditingMilestone = (milestone: Milestone) => {
     setEditingMilestoneId(milestone.id);
-    setMilestoneEdits((prev) => ({
-      ...prev,
-      [milestone.id]: milestone.text,
-    }));
+    setMilestoneEdits((prev) => ({ ...prev, [milestone.id]: milestone.text }));
   };
 
   const confirmEditingMilestone = async (milestoneId: string) => {
     const newText = milestoneEdits[milestoneId]?.trim() || "";
-    const updatedMilestones = goal.milestones.map((m: Milestone) =>
+    const updatedMilestones = goal.milestones?.map((m: Milestone) =>
       m.id === milestoneId ? { ...m, text: newText } : m
-    );
+    ) || [];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
-    setEditingMilestoneId(null);
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+      setEditingMilestoneId(null);
+    } catch (error) {
+      console.error("Error editing milestone:", error);
+    }
   };
 
   const cancelEditingMilestone = (milestoneId: string) => {
     setEditingMilestoneId(null);
-    setMilestoneEdits((prev) => ({
-      ...prev,
-      [milestoneId]: "",
-    }));
+    setMilestoneEdits((prev) => ({ ...prev, [milestoneId]: "" }));
   };
 
   const deleteMilestone = async (milestoneId: string) => {
-    const updatedMilestones = goal.milestones.filter(
+    const updatedMilestones = goal.milestones?.filter(
       (m: Milestone) => m.id !== milestoneId
-    );
+    ) || [];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error deleting milestone:", error);
+    }
   };
 
   const addMilestone = async () => {
@@ -154,14 +166,24 @@ export default function GoalDetailsScreen() {
       completed: false,
       updates: [],
     };
-    const updatedMilestones = [...goal.milestones, newMilestone];
+    const updatedMilestones = goal.milestones
+      ? [...goal.milestones, newMilestone]
+      : [newMilestone];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error adding milestone:", error);
+    }
   };
 
-  // --- Activity Updates ---
+  // Activity Updates
   const toggleExpandMilestone = (milestoneId: string) => {
     setExpandedMilestone((prev) => (prev === milestoneId ? null : milestoneId));
   };
@@ -172,9 +194,9 @@ export default function GoalDetailsScreen() {
       dateStyle: "medium",
       timeStyle: "short",
     });
-    const updatedMilestones = goal.milestones.map((m: Milestone) => {
+    const updatedMilestones = goal.milestones?.map((m: Milestone) => {
       if (m.id === milestoneId) {
-        const newUpdate: MilestoneUpdate = {
+        const newUpdate = {
           id: Date.now().toString(),
           text: text.trim(),
           timestamp,
@@ -183,28 +205,44 @@ export default function GoalDetailsScreen() {
         return { ...m, updates };
       }
       return m;
-    });
+    }) || [];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error adding milestone update:", error);
+    }
   };
 
   const deleteMilestoneUpdate = async (milestoneId: string, updateId: string) => {
-    const updatedMilestones = goal.milestones.map((m: Milestone) => {
+    const updatedMilestones = goal.milestones?.map((m: Milestone) => {
       if (m.id === milestoneId) {
         const filteredUpdates = (m.updates || []).filter((u) => u.id !== updateId);
         return { ...m, updates: filteredUpdates };
       }
       return m;
-    });
+    }) || [];
     const updatedGoal = { ...goal, milestones: updatedMilestones };
     setGoal(updatedGoal);
-    await updateGoalInStorage(updatedGoal);
-    dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+
+    try {
+      if (!auth.currentUser) return;
+      await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+        milestones: updatedMilestones,
+      });
+      dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+    } catch (error) {
+      console.error("Error deleting milestone update:", error);
+    }
   };
 
-  // --- Goal Completion / Deletion ---
+  // Goal Completion & Deletion
   const completeGoal = async () => {
     Alert.alert("Complete Goal", "Mark this goal as complete?", [
       { text: "Cancel", style: "cancel" },
@@ -213,9 +251,17 @@ export default function GoalDetailsScreen() {
         onPress: async () => {
           const updatedGoal = { ...goal, completed: true, progress: 1 };
           setGoal(updatedGoal);
-          await updateGoalInStorage(updatedGoal);
-          dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
-          router.replace("/(tabs)/goals");
+          try {
+            if (!auth.currentUser) return;
+            await GoalsService.updateGoal(auth.currentUser.uid, goalId, {
+              completed: true,
+              progress: 1,
+            });
+            dispatch({ type: "UPDATE_GOAL", payload: updatedGoal });
+            router.replace("/(tabs)/goals");
+          } catch (error) {
+            console.error("Error completing goal:", error);
+          }
         },
       },
     ]);
@@ -232,11 +278,9 @@ export default function GoalDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              if (!auth.currentUser) return;
+              await GoalsService.deleteGoal(auth.currentUser.uid, goalId);
               dispatch({ type: "DELETE_GOAL", payload: goalId });
-              const storedGoals = await AsyncStorage.getItem("goals");
-              const goals = storedGoals ? JSON.parse(storedGoals) : [];
-              const updatedGoals = goals.filter((g: any) => g.id !== goalId);
-              await AsyncStorage.setItem("goals", JSON.stringify(updatedGoals));
               router.replace("/(tabs)/goals");
             } catch (error) {
               console.error("Error deleting goal:", error);
@@ -247,7 +291,13 @@ export default function GoalDetailsScreen() {
     );
   };
 
-  if (!goal) return <Text style={styles.loading}>Loading...</Text>;
+  // If goal is still loading or not found
+  if (loading) {
+    return <Text style={styles.loading}>Loading...</Text>;
+  }
+  if (!goal) {
+    return <Text style={styles.loading}>Goal not found.</Text>;
+  }
 
   const milestoneProgress =
     goal.milestones && goal.milestones.length > 0
@@ -299,7 +349,7 @@ export default function GoalDetailsScreen() {
       <View style={styles.milestonesContainer}>
         <Text style={styles.sectionTitle}>Milestones</Text>
         <FlatList
-          data={goal.milestones}
+          data={goal.milestones || []}
           keyExtractor={(item: Milestone) => item.id}
           ListEmptyComponent={
             <Text style={styles.placeholderText}>No milestones yet.</Text>
@@ -325,10 +375,7 @@ export default function GoalDetailsScreen() {
                       style={styles.milestoneInput}
                       value={displayText}
                       onChangeText={(text) =>
-                        setMilestoneEdits((prev) => ({
-                          ...prev,
-                          [item.id]: text,
-                        }))
+                        setMilestoneEdits((prev) => ({ ...prev, [item.id]: text }))
                       }
                       mode="outlined"
                     />
@@ -364,7 +411,7 @@ export default function GoalDetailsScreen() {
                     />
                   )}
                   <IconButton
-                    icon={() => <Text style={styles.bookEmoji}>📖</Text>}
+                    icon="book"
                     onPress={() => toggleExpandMilestone(item.id)}
                   />
                   <IconButton
@@ -374,8 +421,8 @@ export default function GoalDetailsScreen() {
                 </View>
                 {expandedMilestone === item.id && (
                   <View style={styles.activitySection}>
-                    {(item.updates || []).length > 0 ? (
-                      item.updates?.map((upd) => (
+                    {item.updates?.length ? (
+                      item.updates.map((upd) => (
                         <View style={styles.updateRow} key={upd.id}>
                           <Text style={styles.updateText}>
                             {upd.text}{" "}
@@ -437,15 +484,12 @@ export default function GoalDetailsScreen() {
   );
 }
 
-/** Helper component for adding updates to a milestone. */
 function AddUpdateField({ onAdd }: { onAdd: (text: string) => void }) {
   const [inputValue, setInputValue] = useState("");
-
   const handleAdd = () => {
     onAdd(inputValue);
     setInputValue("");
   };
-
   return (
     <View style={styles.addUpdateContainer}>
       <TextInput

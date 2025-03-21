@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import React, { useEffect, useState } from "react";
 import { ThemeProvider, DarkTheme, DefaultTheme } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";

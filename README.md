@@ -1,50 +1,104 @@
-# Welcome to your Expo app 👋
+# Jekalo - Goal Tracking App 🎯
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern, cross-platform goal tracking application built with React Native and Expo. Jekalo helps users set, track, and achieve their goals with features like streak tracking, milestones, and notifications.
 
-## Get started
+## Features
 
-1. Install dependencies
+- 🎯 Create and manage goals with custom milestones
+- 🔥 Track daily streaks and progress
+- 🔔 Set reminders and notifications
+- 📱 Cross-platform support (iOS & Android)
+- 🔒 Secure authentication with Firebase
+- 📊 Progress tracking and analytics
+- 🎨 Modern, intuitive UI
 
+## Tech Stack
+
+- React Native with Expo
+- TypeScript
+- Firebase (Authentication, Firestore)
+- React Context for state management
+- Expo Notifications
+- React Native Paper for UI components
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- Expo CLI
+- Firebase account and project
+- iOS Simulator (for Mac) or Android Studio (for Android development)
+
+## Getting Started
+
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/jekalo.git
+   cd jekalo
+   ```
+
+2. Install dependencies
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Set up environment variables
+   - Copy `.env.example` to `.env`
+   - Fill in your Firebase configuration values
    ```bash
-    npx expo start
+   cp .env.example .env
    ```
 
-In the output, you'll find options to open the app in a
+4. Start the development server
+   ```bash
+   npx expo start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+5. Run on your preferred platform
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan QR code with Expo Go app for physical device
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Project Structure
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+jekalo/
+├── app/                    # Main application code
+│   ├── (modals)/          # Modal screens
+│   ├── (tabs)/            # Tab-based screens
+│   └── auth/              # Authentication screens
+├── components/            # Reusable UI components
+├── services/             # Backend services
+├── context/              # React Context providers
+├── hooks/                # Custom React hooks
+├── types/                # TypeScript type definitions
+└── config/               # Configuration files
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Firebase Setup
 
-## Learn more
+1. Create a new Firebase project
+2. Enable Authentication (Email/Password)
+3. Set up Firestore Database
+4. Configure your app in Firebase Console
+5. Download and add configuration files:
+   - `GoogleService-Info.plist` for iOS
+   - `google-services.json` for Android
 
-To learn more about developing your project with Expo, look at the following resources:
+## Contributing
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## Join the community
+## License
 
-Join our community of developers creating universal apps.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Acknowledgments
+
+- [Expo](https://expo.dev) for the amazing development platform
+- [Firebase](https://firebase.google.com) for backend services
+- [React Native Paper](https://callstack.github.io/react-native-paper/) for UI components

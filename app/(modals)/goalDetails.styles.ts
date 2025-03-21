@@ -1,20 +1,22 @@
+// goalDetails.styles.ts
 import { StyleSheet } from "react-native";
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#FAFAFA",
+    padding: 16,
+    backgroundColor: "#F0F2F5",
   },
   loading: {
-    fontSize: 18,
+    fontSize: 16,
     textAlign: "center",
-    marginTop: 50,
+    marginTop: 20,
   },
   goalCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     borderRadius: 12,
     elevation: 4,
+    backgroundColor: "#fff",
   },
   titleRow: {
     flexDirection: "row",
@@ -22,24 +24,24 @@ export default StyleSheet.create({
     marginBottom: 8,
   },
   goalIcon: {
-    marginRight: 10,
+    marginRight: 12,
+  },
+  titleInput: {
+    flex: 1,
+    marginRight: 8,
   },
   goalTitle: {
     flex: 1,
     fontSize: 20,
     fontWeight: "600",
   },
-  titleInput: {
-    flex: 1,
-    marginRight: 8,
-  },
   dateRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    marginBottom: 8,
   },
   calendarIcon: {
-    marginRight: 8, // Ensures spacing from "Due:"
+    marginRight: 4,
   },
   dueDateText: {
     fontSize: 14,
@@ -47,46 +49,42 @@ export default StyleSheet.create({
   },
   subHeader: {
     fontSize: 16,
-    marginTop: 12,
+    fontWeight: "500",
     marginBottom: 8,
-    color: "#666",
+    marginTop: 12,
   },
   progress: {
-    height: 10,
-    borderRadius: 5,
+    height: 8,
+    borderRadius: 4,
+    marginVertical: 8,
   },
   milestonesContainer: {
-    flex: 1,
-    marginBottom: 20,
+    marginTop: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   placeholderText: {
     fontSize: 14,
     color: "#888",
-    marginVertical: 10,
     textAlign: "center",
+    marginVertical: 8,
   },
   milestoneCard: {
-    marginBottom: 10,
-    borderRadius: 12,
+    marginVertical: 5,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 10,
     elevation: 2,
-    padding: 8,
   },
   milestoneRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  milestoneInput: {
-    flex: 1,
-    marginRight: 8,
+    padding: 8,
   },
   milestoneTextWrapper: {
     flex: 1,
-    marginLeft: 6,
   },
   milestoneText: {
     fontSize: 16,
@@ -94,66 +92,70 @@ export default StyleSheet.create({
   },
   completedText: {
     textDecorationLine: "line-through",
-    color: "#999",
+    color: "#888",
+  },
+  bookEmoji: {
+    fontSize: 18,
   },
   activitySection: {
+    backgroundColor: "#EFEFEF",
+    borderRadius: 8,
+    padding: 8,
     marginTop: 8,
   },
   updateRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    padding: 6,
-    marginBottom: 6,
+    alignItems: "center",
+    marginVertical: 4,
   },
   updateText: {
     fontSize: 14,
-    color: "#333",
+    color: "#555",
+    flex: 1,
   },
   updateTimestamp: {
     fontSize: 12,
-    color: "#777",
+    color: "#999",
   },
   addUpdateContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 6,
+    marginTop: 8,
   },
   addUpdateInput: {
     flex: 1,
     marginRight: 8,
   },
   addUpdateButton: {
-    borderRadius: 6,
-  },
-  addMilestoneButton: {
-    marginVertical: 10,
-    backgroundColor: "#6200EE",
-    borderRadius: 12,
-  },
-  /** Book Emoji Icon */
-  bookEmoji: {
-    fontSize: 18, 
+    paddingVertical: 4,
   },
   actionButtons: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
+    marginTop: 16,
   },
   completeButton: {
-    flex: 0.48,
-    backgroundColor: "#4CAF50", // Green for "Complete Goal"
-    borderRadius: 12,
+    flex: 1,
+    marginRight: 8,
+    borderRadius: 8,
   },
   deleteButton: {
-    flex: 0.48,
+    flex: 1,
+    marginLeft: 8,
+    borderRadius: 8,
     borderColor: "#DC143C",
-    borderWidth: 1,
-    borderRadius: 12,
-    backgroundColor: "#fff",
   },
   buttonLabel: {
-    fontSize: 14,
+    fontSize: 16,
+  },
+  // Additional keys missing in previous version:
+  addMilestoneButton: {
+    marginTop: 10,
+  },
+  milestoneInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 8,
   },
 });

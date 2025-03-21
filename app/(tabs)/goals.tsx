@@ -7,26 +7,53 @@ import { useGoalContext } from "../../context/GoalContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
 import { signOut } from "firebase/auth";
-import { auth } from "../../config/firebaseConfig";
+import { auth, db } from "../../config/firebaseConfig";
+import { collection, getDocs, writeBatch, doc, query, orderBy } from "firebase/firestore";
 import styles from "./goals.styles";
 
 export default function GoalsScreen() {
-  const { state, dispatch } = useGoalContext();
+  const { state } = useGoalContext();
   const router = useRouter();
 
-  // Debug: Log goals on screen focus
+  // Reload or log goals when the screen gains focus
   useFocusEffect(
     useCallback(() => {
       console.log("Goals on focus:", state.goals);
     }, [state.goals])
   );
 
-  // Sort goals by due date (earliest first)
+  // Sort goals by due date (if a goal is missing a deadline, place it at the end)
   const sortedGoals = useMemo(() => {
-    return [...state.goals].sort(
-      (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-    );
+    return [...state.goals].sort((a, b) => {
+      const dateA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const dateB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return dateA - dateB;
+    });
   }, [state.goals]);
+
+  // Function to permanently delete all goals from Firestore
+  const clearAllGoals = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const goalsRef = collection(db, `users/${user.uid}/goals`);
+      const q = query(goalsRef, orderBy("created", "desc"));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+
+      snapshot.docs.forEach((docSnapshot) => {
+        const goalDocRef = doc(db, `users/${user.uid}/goals`, docSnapshot.id);
+        batch.delete(goalDocRef);
+      });
+
+      await batch.commit();
+      Alert.alert("Success", "All goals have been cleared.");
+    } catch (error) {
+      console.error("Error clearing goals:", error);
+      Alert.alert("Error", "Failed to clear goals.");
+    }
+  };
 
   // Confirm before clearing all goals
   const confirmClearAll = () => {
@@ -38,16 +65,18 @@ export default function GoalsScreen() {
         {
           text: "Clear",
           style: "destructive",
-          onPress: () => dispatch({ type: "SET_GOALS", payload: [] }),
+          onPress: () => clearAllGoals(),
         },
       ]
     );
   };
 
-  // Format date naturally
+  // Format date with fallback
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString("en-US", { dateStyle: "medium" });
+    return isNaN(date.getTime())
+      ? "No due date"
+      : date.toLocaleString("en-US", { dateStyle: "medium" });
   };
 
   // Render a single goal card with animation
@@ -91,7 +120,9 @@ export default function GoalsScreen() {
   const renderEmptyList = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyText}>No goals yet.</Text>
-      <Text style={styles.emptyText}>Tap the + button to add your first goal!</Text>
+      <Text style={styles.emptyText}>
+        Tap the + button to add your first goal!
+      </Text>
     </View>
   );
 
@@ -102,6 +133,7 @@ export default function GoalsScreen() {
       router.replace("/auth/login");
     } catch (error) {
       console.error("Error signing out:", error);
+      Alert.alert("Error", "Failed to sign out.");
     }
   };
 
@@ -124,13 +156,18 @@ export default function GoalsScreen() {
         </View>
 
         {/* Goals List */}
-        <FlatList
-          data={sortedGoals}
-          keyExtractor={(item) => item.id}
-          renderItem={renderGoalItem}
-          ListEmptyComponent={renderEmptyList}
-          contentContainerStyle={styles.listContent}
-        />
+        {state.loading ? (
+          <Text style={styles.loadingText}>Loading...</Text>
+        ) : state.goals.length === 0 ? (
+          renderEmptyList()
+        ) : (
+          <FlatList
+            data={sortedGoals}
+            keyExtractor={(item) => item.id}
+            renderItem={renderGoalItem}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
 
         {/* Floating Action Button */}
         <FAB

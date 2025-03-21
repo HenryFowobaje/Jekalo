@@ -1,9 +1,10 @@
+// goals.styles.ts (or your styles file)
 import { StyleSheet } from "react-native";
 
 export default StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#F0F2F5",
   },
   container: {
     flex: 1,
@@ -27,27 +28,26 @@ export default StyleSheet.create({
     fontWeight: "600",
   },
   listContent: {
-    paddingBottom: 80, // Extra space so FAB doesn't cover the last item
+    paddingBottom: 80,
   },
   card: {
     marginBottom: 16,
     borderRadius: 12,
     elevation: 3,
-    // Removed overflow: "hidden" to ensure the shadow displays correctly.
+    backgroundColor: "#fff",
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: "600",
   },
   progress: {
-    marginTop: 8,
+    marginVertical: 8,
     height: 8,
     borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
     color: "#666",
-    marginTop: 4,
   },
   detailButton: {
     padding: 12,
@@ -71,5 +71,12 @@ export default StyleSheet.create({
     right: 16,
     bottom: 16,
     backgroundColor: "#6200EE",
+  },
+  // Add this:
+  loadingText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 20,
+    color: "#333",
   },
 });

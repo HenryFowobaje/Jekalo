@@ -1,27 +1,37 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
-import { Avatar, Button, TextInput, Card, IconButton } from 'react-native-paper';
-import { useRouter } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useGoalContext } from '../../context/GoalContext';
-
-const icons = [
-  { name: 'flash', label: 'Quick' },
-  { name: 'bullseye', label: 'Focus' },
-  { name: 'trophy', label: 'Achieve' },
-  { name: 'school', label: 'Learn' },
-  { name: 'book', label: 'Read' },
-];
+// CreateGoalScreen.tsx
+import React, { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  ScrollView,
+} from "react-native";
+import {
+  Avatar,
+  Button,
+  TextInput,
+  Card,
+  IconButton,
+} from "react-native-paper";
+import { useRouter } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useGoalContext } from "../../context/GoalContext";
+import { NotificationType, Goal, GoalType, Milestone } from "../../types/models";
+import { auth } from "../../config/firebaseConfig";
+import { GoalsService } from "../../services/firebase/GoalsService";
+import styles from "./CreateGoal.styles";
 
 export default function CreateGoalScreen() {
   const router = useRouter();
   const { dispatch } = useGoalContext();
-  const [goalTitle, setGoalTitle] = useState('');
-  const [goalDescription, setGoalDescription] = useState('');
+  const [goalTitle, setGoalTitle] = useState("");
+  const [goalDescription, setGoalDescription] = useState("");
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date>(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [milestones, setMilestones] = useState<{ id: string; text: string }[]>([]);
+  // Updated milestones state to use the Milestone type
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [touched, setTouched] = useState(false);
 
   const onDateChange = (_: any, selectedDate?: Date) => {
@@ -30,33 +40,76 @@ export default function CreateGoalScreen() {
   };
 
   const addMilestone = () => {
-    setMilestones([...milestones, { id: Date.now().toString(), text: '' }]);
+    // Create a new milestone with a default 'completed' value and empty updates array
+    const newMilestone: Milestone = { 
+      id: Date.now().toString(), 
+      text: "", 
+      completed: false, 
+      updates: [] 
+    };
+    setMilestones((prev) => [...prev, newMilestone]);
   };
 
   const updateMilestone = (id: string, text: string) => {
-    setMilestones(milestones.map(m => (m.id === id ? { ...m, text } : m)));
+    setMilestones((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, text } : m))
+    );
   };
 
   const deleteMilestone = (id: string) => {
-    setMilestones(milestones.filter(m => m.id !== id));
+    setMilestones((prev) => prev.filter((m) => m.id !== id));
   };
 
-  const saveGoal = useCallback(() => {
+  const renderMilestoneItem = ({ item }: { item: Milestone }) => (
+    <Card style={styles.milestoneCard}>
+      <View style={styles.milestoneRow}>
+        <TextInput
+          style={styles.milestoneInput}
+          placeholder="Milestone description"
+          value={item.text}
+          onChangeText={(text) => updateMilestone(item.id, text)}
+          mode="outlined"
+        />
+        <IconButton icon="trash-can-outline" onPress={() => deleteMilestone(item.id)} />
+      </View>
+    </Card>
+  );
+
+  const saveGoal = useCallback(async () => {
     setTouched(true);
     if (!goalTitle.trim() || !selectedIcon) return;
 
-    const newGoal = {
-      id: Date.now().toString(),
+    // Get the authenticated user's UID:
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      console.error("User is not logged in.");
+      return;
+    }
+
+    // Build partial goal data that matches the createGoal signature.
+    const goalData = {
       title: goalTitle,
       description: goalDescription.trim(),
+      type: "habit" as GoalType, // default to 'habit'
       icon: selectedIcon,
-      progress: 0,
       deadline: dueDate.toISOString(),
-      milestones,
+      frequency: undefined, // or provide a default frequency if needed
+      reminders: {
+        enabled: false,
+        times: [],
+        type: "push" as NotificationType,
+      },
+      milestones, // Now milestones is of type Milestone[]
     };
 
-    dispatch({ type: 'ADD_GOAL', payload: newGoal });
-    router.back();
+    try {
+      // Create the goal in Firestore.
+      const newGoal = await GoalsService.createGoal(userId, goalData);
+      
+      router.back();
+    } catch (error) {
+      console.error("Failed to create goal:", error);
+    }
   }, [goalTitle, goalDescription, selectedIcon, dueDate, milestones, dispatch, router]);
 
   return (
@@ -94,12 +147,25 @@ export default function CreateGoalScreen() {
           {/* Icon Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select an Icon</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconScroll}>
-              {icons.map(icon => (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.iconScroll}
+            >
+              {[
+                { name: "flash", label: "Quick" },
+                { name: "bullseye", label: "Focus" },
+                { name: "trophy", label: "Achieve" },
+                { name: "school", label: "Learn" },
+                { name: "book", label: "Read" },
+              ].map((icon) => (
                 <TouchableOpacity
                   key={icon.name}
                   onPress={() => setSelectedIcon(icon.name)}
-                  style={[styles.iconWrapper, selectedIcon === icon.name && styles.iconSelected]}
+                  style={[
+                    styles.iconWrapper,
+                    selectedIcon === icon.name && styles.iconSelected,
+                  ]}
                 >
                   <Avatar.Icon size={48} icon={icon.name} />
                   <Text style={styles.iconLabel}>{icon.label}</Text>
@@ -109,12 +175,20 @@ export default function CreateGoalScreen() {
           </View>
 
           {/* Due Date Picker */}
-          <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.datePicker}>
-            <IconButton icon="calendar" size={24} color="#6200EE" />
+          <TouchableOpacity
+            onPress={() => setShowPicker(true)}
+            style={styles.datePicker}
+          >
+            <IconButton icon="calendar" size={24} iconColor="#6200EE" />
             <Text style={styles.dateText}>Due Date: {dueDate.toDateString()}</Text>
           </TouchableOpacity>
           {showPicker && (
-            <DateTimePicker value={dueDate} mode="date" display="default" onChange={onDateChange} />
+            <DateTimePicker
+              value={dueDate}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+            />
           )}
 
           {/* Milestones Section */}
@@ -123,25 +197,19 @@ export default function CreateGoalScreen() {
             {milestones.length > 0 ? (
               <FlatList
                 data={milestones}
-                keyExtractor={item => item.id}
-                renderItem={({ item }) => (
-                  <Card style={styles.milestoneCard}>
-                    <View style={styles.milestoneRow}>
-                      <TextInput
-                        style={styles.milestoneInput}
-                        placeholder="Milestone description"
-                        value={item.text}
-                        onChangeText={text => updateMilestone(item.id, text)}
-                      />
-                      <IconButton icon="trash-can-outline" onPress={() => deleteMilestone(item.id)} />
-                    </View>
-                  </Card>
-                )}
+                keyExtractor={(item) => item.id}
+                renderItem={renderMilestoneItem}
               />
             ) : (
-              <Text style={styles.placeholderText}>No milestones added yet.</Text>
+              <Text style={styles.placeholderText}>
+                No milestones added yet.
+              </Text>
             )}
-            <Button mode="outlined" onPress={addMilestone} style={styles.addMilestoneButton}>
+            <Button
+              mode="outlined"
+              onPress={addMilestone}
+              style={styles.addMilestoneButton}
+            >
               + Add Milestone
             </Button>
           </View>
@@ -161,102 +229,3 @@ export default function CreateGoalScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#F0F2F5',
-  },
-  formCard: {
-    borderRadius: 16,
-    elevation: 4,
-    backgroundColor: '#fff',
-  },
-  header: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#6200EE',
-  },
-  input: {
-    marginBottom: 12,
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 8,
-    fontSize: 12,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  iconScroll: {
-    paddingVertical: 4,
-  },
-  iconWrapper: {
-    alignItems: 'center',
-    marginRight: 16,
-    padding: 8,
-    borderRadius: 12,
-  },
-  iconSelected: {
-    borderWidth: 2,
-    borderColor: '#6200EE',
-    backgroundColor: '#EDE7F6',
-  },
-  iconLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#333',
-  },
-  datePicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    elevation: 2,
-    marginBottom: 16,
-  },
-  dateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6200EE',
-  },
-  milestoneCard: {
-    marginVertical: 5,
-    backgroundColor: '#FAFAFA',
-    borderRadius: 10,
-    elevation: 2,
-  },
-  milestoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  milestoneInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 8,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 8,
-  },
-  addMilestoneButton: {
-    marginTop: 10,
-  },
-  saveButton: {
-    marginTop: 20,
-    borderRadius: 10,
-  },
-  saveButtonContent: {
-    paddingVertical: 8,
-  },
-});
